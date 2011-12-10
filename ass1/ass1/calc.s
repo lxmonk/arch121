@@ -20,6 +20,9 @@ X_SIGN:         DD 0
 Y_SIGN:         DD 0
 RES_SIGN:       DD 0
 CARRY:          DB 0
+TMP:            DD 0
+TMP_LSD:        DD 0
+TMP_SIGN:       DD 0
 
 section .text           ; our code is always in the .text section
         global calc     ; makes the function appear in global scope
@@ -109,13 +112,65 @@ endConv:
         mov     esp, ebp
         pop     ebp
         ret
+
+
+
 minus:
         mov eax, [X]
         mov ebx, [Y]
         sub eax, ebx
         jmp print
 
+different_signs_in_plus:
+        cmp     [X_SIGN], DWORD 1
+        jne     x_plus_y_minus
+        ;; X <= 0, Y >= 0
+        cld
+        mov     esi, X            ; -X + Y => Y - X
+        mov     edi, TMP          ; so exchange (XCHG) X and Y and make
+        mov     ecx, 39           ; them both positive
+lp:
+        lodsd
+        stosd
+        loop lp
+
+        cld
+        mov     esi, Y
+        mov     edi, X
+        mov     ecx, 39
+lp2:
+        lodsd
+        stosd
+        loop lp2
+
+        cld
+        mov     esi, TMP
+        mov     edi, Y
+        mov     ecx, 39
+lp3:
+        lodsd
+        stosd
+        loop lp3
+
+        xchg    eax, [X_LSD]
+        xchg    eax, [Y_LSD]
+        xchg    eax, [X_LSD]
+
+        mov     DWORD [X_SIGN], 0     ;X is now positive
+        mov     DWORD [Y_SIGN], 0     ;Y is also now positive
+        jmp     minus
+x_plus_y_minus:
+        mov     DWORD [Y_SIGN], 0     ; X + (-Y) => X - Y, so make Y positive
+        jmp     minus           ; and goto minus
+
+
 plus:                           ; X + Y
+        mov     ebx, [X_SIGN]   ; compare signs of X, Y and act
+        mov     ebx, [ebx]      ;; accordingly.
+        cmp     ebx, [Y_SIGN]
+        jne     different_signs_in_plus
+        mov     [RES_SIGN], ebx ; +a + +b => a + b, -a + -b => -1 * (a + b)
+
         mov     ebx, [X_LSD]    ; X_LSD
         dec     ebx             ; X_LSD points to one place AFTER the LSD
 
@@ -128,8 +183,8 @@ adding_loop:
         mov     eax, 0
         mov     al, [ebx]
 
-        pushad
-        push    eax
+        ;; pushad
+        ;; push    eax
 
         add     al, [edi]
         add     al, [CARRY]
@@ -139,15 +194,15 @@ adding_loop:
         sub     al, 10
         mov     BYTE [CARRY], 1      ;set carry to 1
 mod10OK:
-        push    0
-        push    eax
+        ;; push    0
+        ;; push    eax
 
         mov     [edx], al
 
-        push    intFormat
-        call    printf
-        add     esp, 16
-        popa
+        ;; push    intFormat
+        ;; call    printf
+        ;; add     esp, 16
+        ;; popa
 
         dec     ebx
         dec     edi
@@ -224,18 +279,12 @@ print_result:
         jmp     zero_and_ret
 
 zero_and_ret:
-        mov     ecx, RES
-        mov     esi, RES_LSD
-        mov     esi, [esi]     ; deref RES_LSD
-zero_loop:
-        cmp     ecx, esi
-        je      ret
-        mov     BYTE [ecx], 0
-        inc     ecx
-        jmp     zero_loop
-
+        cld
+        mov     edi, RES
+        mov     ecx, 39
+        xor     eax, eax
+        rep     stosd
 ret:
-        mov     BYTE [ecx], 0
         popad                    ; restore all previously used registers
         mov     esp, ebp
         pop     ebp
@@ -271,7 +320,8 @@ print_init:
         ;; mov     esi, [ebp+8]    ; X_LSD
         mov     esi, RES_LSD
         mov     esi, [esi]
-        dec     esi
+        ;; dec     esi
+
         ;; push    DWORD RES
         ;; push    DWORD [RES_MSD]
         ;; push    DWORD [RES_LSD]
