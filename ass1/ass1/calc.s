@@ -33,27 +33,27 @@ calc:                                   ; functions are defined as labels
         push    DWORD RES
         push    DWORD [RES_MSD]
         push    DWORD [RES_LSD]
-	push 	intFormat
+        push    intFormat
         call    printf
          add    esp, 16
 
-	;;;;; convert first number to X ;;;;;;;;
+        ;;;;; convert first number to X ;;;;;;;;
         push    DWORD [ebp+8]    ;pointer to x input string
         push    X
         push    X_SIGN
         push    X_LSD
         call    converter
         add     esp, 16
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-	;;;;; convert second number to Y ;;;;;;;;
+        ;;;;; convert second number to Y ;;;;;;;;
         push    DWORD [ebp+16]
         push    Y
         push    Y_SIGN
         push    Y_LSD
         call    converter
         add     esp, 16
-	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+        ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         ;; push    X
         ;; push    X_SIGN
@@ -123,11 +123,14 @@ plus:                           ; X + Y
         dec     edi
         mov     edx, [RES_LSD]   ; RES_LSD (right edge)
 
+
 adding_loop:
         mov     eax, 0
         mov     al, [ebx]
-        ;; pushad
-        ;; push    eax
+
+        pushad
+        push    eax
+
         add     al, [edi]
         add     al, [CARRY]
         mov     BYTE [CARRY], 0
@@ -136,13 +139,16 @@ adding_loop:
         sub     al, 10
         mov     BYTE [CARRY], 1      ;set carry to 1
 mod10OK:
-        ;; push    0
-        ;; push    eax
+        push    0
+        push    eax
+
         mov     [edx], al
-        ;; push    intFormat
-        ;; call    printf
-        ;; add     esp, 16
-        ;; popa
+
+        push    intFormat
+        call    printf
+        add     esp, 16
+        popa
+
         dec     ebx
         dec     edi
         dec     edx
@@ -177,11 +183,11 @@ plus_done:
         inc     edx
 with_carry:
         mov     [RES_MSD], edx
-	
-	push    DWORD RES
+
+        push    DWORD RES
         push    DWORD [RES_MSD]
         push    DWORD [RES_LSD]
-	push 	intFormat
+        push    intFormat
         call    printf
         add    esp, 16
 
@@ -194,20 +200,20 @@ multiply:
         jmp print
 
 divide:
-        mov eax, [X]
+        mov     eax, [X]
         cdq
-        mov ebx, [Y]
-        idiv ebx
-        jmp print
+        mov     ebx, [Y]
+        idiv    ebx
+        jmp     print
 print_result:
-	
-	push    DWORD RES
+
+        push    DWORD RES
         push    DWORD [RES_MSD]
         push    DWORD [RES_LSD]
-	push 	intFormat
+        push    intFormat
         call    printf
         add     esp, 16
-      
+
 
         push    RES_MSD
         push    RES_SIGN
@@ -215,6 +221,21 @@ print_result:
         call    printX
         add     esp, 12
 
+        jmp     zero_and_ret
+
+zero_and_ret:
+        mov     ecx, RES
+        mov     esi, RES_LSD
+        mov     esi, [esi]     ; deref RES_LSD
+zero_loop:
+        cmp     ecx, esi
+        je      ret
+        mov     BYTE [ecx], 0
+        inc     ecx
+        jmp     zero_loop
+
+ret:
+        mov     BYTE [ecx], 0
         popad                    ; restore all previously used registers
         mov     esp, ebp
         pop     ebp
@@ -245,17 +266,19 @@ printX:
 
 print_init:
         mov     ebx, [ebp+16]   ; X[0] / RES_MSD
-        ;; mov     ebx, [ebx]
-        mov     esi, [ebp+8]    ; X_LSD
+        mov     ebx, [ebx]
+        ;; mov     ebx, [RES_MSD]
+        ;; mov     esi, [ebp+8]    ; X_LSD
+        mov     esi, RES_LSD
         mov     esi, [esi]
-
-        ;; push    DWORD RES	
+        dec     esi
+        ;; push    DWORD RES
         ;; push    DWORD [RES_MSD]
         ;; push    DWORD [RES_LSD]
-	;; push 	intFormat
+        ;; push         intFormat
         ;; call    printf
         ;; add     esp, 16
-	
+
         push    DWORD RES
         push    DWORD ebx
         push    DWORD esi
