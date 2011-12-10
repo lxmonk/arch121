@@ -26,12 +26,13 @@ int main(void) {
         int str_len = 0;
         while(1){
                 printf(">");
-                fgets(str_buf, MAX_LEN, stdin);    // Get calculation request from user
-                if(str_buf[0]=='q')
-                        exit(0);
-                separateParams(str_buf,operation,operand2); //break into 3 parameters
+                fgets(str_buf, MAX_LEN, stdin);    /* Get calculation request from user */
+                if(str_buf[0]=='q') {
+                    exit(0);
+                }
+                separateParams(str_buf,operation,operand2); /* break into 3 parameters */
                 /* printf("op=%s, int(op)=%d", operation, operation); */
-                calc(str_buf,operation,operand2);                // Your assembly code function
+                calc(str_buf, operation, operand2);
         }
 
 }
