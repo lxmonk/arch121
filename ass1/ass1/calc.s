@@ -1,4 +1,6 @@
 section .data                           ; data section, read-write
+
+debugFormat	DB "%s: %d %d %d",10,0        ; this is a temporary var
 strFormat:      DB "%s,%s,%s",10,0        ; this is a temporary var
 strFormat2:     DB "%d,  %s,  %d",10,0   ; this is a temporary var
 intFormat:      DB "%d,   %d,   %d",10,0  ; this is a
@@ -28,30 +30,30 @@ calc:                                   ; functions are defined as labels
         mov     ebp, esp             ; use base pointer to access stack contents
         pushad                          ; push all variables onto stack
 
-        ;; push    DWORD RES_MSD
-        ;; push    DWORD RES_SIGN
-        ;; push    DWORD RES_LSD
-        ;; call    printX
-        ;; add     esp, 12
+        push    DWORD RES
+        push    DWORD [RES_MSD]
+        push    DWORD [RES_LSD]
+	push 	intFormat
+        call    printf
+         add    esp, 16
 
-
+	;;;;; convert first number to X ;;;;;;;;
         push    DWORD [ebp+8]    ;pointer to x input string
         push    X
         push    X_SIGN
         push    X_LSD
         call    converter
         add     esp, 16
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+	;;;;; convert second number to Y ;;;;;;;;
         push    DWORD [ebp+16]
         push    Y
         push    Y_SIGN
         push    Y_LSD
         call    converter
         add     esp, 16
-
-
-        mov     ebx, X
-        add     ebx, 2
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
         ;; push    X
         ;; push    X_SIGN
@@ -74,27 +76,39 @@ calc:                                   ; functions are defined as labels
         je divide
 
 
-print_result:
-        push    RES_MSD
-        push    RES_SIGN
-        push    RES_LSD
-        push    intFormat
-        call    printf
-        add     esp, 16
+converter:
+        push    ebp
+        mov     ebp, esp
 
-        push    RES_MSD
-        push    RES_SIGN
-        push    RES_LSD
-        call    printX
-        add     esp, 12
+        mov     ecx, [ebp+20]       ;pointer to string
+        mov     eax, [ebp+16]       ;pointer to the byte in X
+        mov     edi, [ebp+12]
+        mov     DWORD [edi], 0
+        cmp     byte [ecx], 45
+        jne     convloop
+        mov     DWORD [edi], 1
+        inc     ecx
 
-        popad                    ; restore all previously used registers
+convloop:
+        cmp     byte [ecx], 0
+        je      endConv
+        cmp     byte [ecx], 10
+        je      endConv
+        mov     ebx, 0
+        mov     bl, byte [ecx]
+        sub     bl, 48
+        mov     BYTE [eax], bl
+        inc     ecx
+        inc     eax
+        jmp     convloop
+
+endConv:
+        mov     edi, [ebp+8]
+        mov     DWORD [edi], eax
+
         mov     esp, ebp
         pop     ebp
-        ret                     ; return to C.
-
-
-
+        ret
 minus:
         mov eax, [X]
         mov ebx, [Y]
@@ -163,12 +177,14 @@ plus_done:
         inc     edx
 with_carry:
         mov     [RES_MSD], edx
-        ;; push    DWORD [RES_LSD]
-        ;; push    RES
-        ;; push    DWORD [RES_MSD]
-        ;; push    intFormat
-        ;; call    printf
-        ;; add     esp, 16
+	
+	push    DWORD RES
+        push    DWORD [RES_MSD]
+        push    DWORD [RES_LSD]
+	push 	intFormat
+        call    printf
+        add    esp, 16
+
         jmp     print_result
 
 multiply:
@@ -183,6 +199,27 @@ divide:
         mov ebx, [Y]
         idiv ebx
         jmp print
+print_result:
+	
+	push    DWORD RES
+        push    DWORD [RES_MSD]
+        push    DWORD [RES_LSD]
+	push 	intFormat
+        call    printf
+        add     esp, 16
+      
+
+        push    RES_MSD
+        push    RES_SIGN
+        push    RES_LSD
+        call    printX
+        add     esp, 12
+
+        popad                    ; restore all previously used registers
+        mov     esp, ebp
+        pop     ebp
+        ret                     ; return to C.
+
 
 print:
         push eax
@@ -194,64 +231,6 @@ print:
         mov     esp, ebp
         pop     ebp
         ret
-
-converter:
-        push    ebp
-        mov     ebp, esp
-
-        mov     ecx, [ebp+20]       ;pointer to string
-        mov     eax, [ebp+16]       ;pointer to the byte in X
-        mov     edi, [ebp+12]
-        mov     DWORD [edi], 0
-        cmp     byte [ecx], 45
-        jne     convloop
-        mov     DWORD [edi], 1
-        inc     ecx
-
-convloop:
-        cmp     byte [ecx], 0
-        je      endConv
-        cmp     byte [ecx], 10
-        je      endConv
-        mov     ebx, 0
-        mov     bl, byte [ecx]
-        sub     bl, 48
-        mov     BYTE [eax], bl
-        inc     ecx
-        inc     eax
-        jmp     convloop
-
-endConv:
-        mov     edi, [ebp+8]
-        mov     DWORD [edi], eax
-
-        mov     esp, ebp
-        pop     ebp
-        ret
-
-;; add128X:
-;;         push    ebp                     ; save Base Pointer (bp) original value
-;;         mov     ebp, esp             ; use base pointer to access stack contents
-;;         pushad                          ; push all variables onto stack
-
-;;         mov     eax, dword [X+12]
-;;         mov     ebx, dword [TMP+12]
-;;         add     eax, ebx
-;;         mov     [X+12], dword eax
-;;         mov     eax, dword [X+8]
-;;         mov     ebx, dword [TMP+8]
-;;         adc     eax, ebx
-;;         mov     [X+8], dword eax
-
-;;         mov     eax, dword [X+4]
-;;         mov     ebx, dword [TMP+4]
-;;         adc     eax, ebx
-;;         mov     [X+4], dword eax
-
-;;         mov     eax,  dword [X]
-;;         mov     ebx, dword [TMP]
-;;         adc     eax, ebx
-;;         mov     [X], dword eax
 
 printX:
         push    ebp
@@ -270,8 +249,15 @@ print_init:
         mov     esi, [ebp+8]    ; X_LSD
         mov     esi, [esi]
 
-        push    DWORD ebx
+        ;; push    DWORD RES	
+        ;; push    DWORD [RES_MSD]
+        ;; push    DWORD [RES_LSD]
+	;; push 	intFormat
+        ;; call    printf
+        ;; add     esp, 16
+	
         push    DWORD RES
+        push    DWORD ebx
         push    DWORD esi
         push    intFormat
         call    printf
