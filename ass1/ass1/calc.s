@@ -1,17 +1,14 @@
 section .data                           ; data section, read-write
 
-debugFormat:	DB "-----",10,0        ; this is a temporary var
+debugFormat	DB "%s: %d %d %d",10,0        ; this is a temporary var
 strFormat:      DB "%s,%s,%s",10,0        ; this is a temporary var
 strFormat2:     DB "%d,  %s,  %d",10,0   ; this is a temporary var
 intFormat:      DB "%d,   %d,   %d",10,0  ; this is a
                                 ; temporary var
 minusFormat:    DB "-",0       ; print char (for '-')
 intCharFormat:  DB "%d",0       ; print 1 digit
-newLineFormat:  DB " ",10,0       ; print 1 digit
 longFormat:     DB "%d %d %d %d",10,0 ;print 128 bit integer
 resultStr:      DB "%d",10,0                      ; this is a temporary var
-resultStr1:      DB "--%d",10,0                      ; this is a temporary var
-
 X:              times 39 DB 0
 X_LSD:          DD 0
 Y:              times 39 DB 0
@@ -33,7 +30,13 @@ calc:                                   ; functions are defined as labels
         mov     ebp, esp             ; use base pointer to access stack contents
         pushad                          ; push all variables onto stack
 
-	
+        push    DWORD RES
+        push    DWORD [RES_MSD]
+        push    DWORD [RES_LSD]
+        push    intFormat
+        call    printf
+         add    esp, 16
+
         ;;;;; convert first number to X ;;;;;;;;
         push    DWORD [ebp+8]    ;pointer to x input string
         push    X
@@ -52,6 +55,12 @@ calc:                                   ; functions are defined as labels
         add     esp, 16
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+        ;; push    X
+        ;; push    X_SIGN
+        ;; push    X_LSD
+        ;; call    printX
+        ;; add     esp, 12
+
         mov ebx, [ebp+12]       ;ebp stores the operator's char
 
         cmp byte [ebx] ,45
@@ -66,7 +75,7 @@ calc:                                   ; functions are defined as labels
         cmp byte [ebx] ,47
         je divide
 
-;;;;;;;; START OF CONVERTOR ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 converter:
         push    ebp
         mov     ebp, esp
@@ -100,219 +109,89 @@ endConv:
         mov     esp, ebp
         pop     ebp
         ret
-;;;;  END OF CONVERTOR ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+minus:
+        mov eax, [X]
+        mov ebx, [Y]
+        sub eax, ebx
+        jmp print
 
-;;;;  START OF PLUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-plus:             ; X + Y
+plus:                           ; X + Y
         mov     ebx, [X_LSD]    ; X_LSD
         dec     ebx             ; X_LSD points to one place AFTER the LSD
 
         mov     edi, [Y_LSD]    ; Y_LSD
         dec     edi
         mov     edx, [RES_LSD]   ; RES_LSD (right edge)
-	mov     BYTE [CARRY], 0
 
 
-plus_adding_loop:	
-
+adding_loop:
         mov     eax, 0
         mov     al, [ebx]
 
-        add     al, byte [edi]
-        add     al, byte [CARRY]
+        pushad
+        push    eax
+
+        add     al, [edi]
+        add     al, [CARRY]
         mov     BYTE [CARRY], 0
-
-;	pushad
-;	push eax
-;	push resultStr
-;	call printf
-;	add esp, 8
-;	popad
-
         cmp     al, 10
-        jb      plus_mod10OK
+        jb      mod10OK
         sub     al, 10
         mov     BYTE [CARRY], 1      ;set carry to 1
-plus_mod10OK:
-        mov     [edx], byte al
+mod10OK:
+        push    0
+        push    eax
 
-;	mov eax,0
-;	mov al,[edx]
-;	pushad
-;	push eax
-;	push resultStr1
-;	call printf
-;	add esp, 8
-;	popad
+        mov     [edx], al
 
-	
+        push    intFormat
+        call    printf
+        add     esp, 16
+        popa
+
         dec     ebx
         dec     edi
         dec     edx
         cmp     ebx, X
-        jb      plus_x_done
+        jb      x_done
         cmp     edi, Y
-        jb      plus_y_done
-        jmp     plus_adding_loop
-plus_x_done:
-	cmp     edi, Y
-        jb      plus_done
+        jb      y_done
+        jmp     adding_loop
 
+x_done:
         mov     al, [edi]
-	add     al, byte [CARRY]        
-	mov     BYTE [CARRY], 0
-        cmp     al, 10
-        jb      plus_xmod10OK
-        sub     al, 10
-        mov     BYTE [CARRY], 1      ;set carry to 1
-plus_xmod10OK:	
-	mov 	[edx] , al
+        adc     [edx], al
         dec     edi
         dec     edx
-
-        jmp     plus_x_done
-
-plus_y_done:
-        cmp     ebx, X
+        cmp     edi, Y
         jb      plus_done
+        jmp     x_done
 
-	mov     al, byte  [ebx]
-	add     al, byte  [CARRY]        
-	mov     BYTE [CARRY], 0
-        cmp     al, 10
-        jb      plus_ymod10OK
-        sub     al, 10
-        mov     BYTE [CARRY], 1      ;set carry to 1
-plus_ymod10OK:	
-	mov  	[edx], al
+y_done:
+        mov     al, [ebx]
+        adc     [edx], al
         dec     ebx
         dec     edx
-
-        jmp     plus_y_done
+        cmp     ebx, X
+        jb      plus_done
+        jmp     y_done
 
 plus_done:
-	cmp     [CARRY], BYTE 0
-	je      plus_no_carry
-        mov     [edx], byte 1             ;not forggeting the last carry        
-	dec 	edx
-plus_no_carry:
-	inc     edx
-      	mov     [RES_MSD], edx
+        adc     [edx], BYTE 0            ;not forggeting the last carry
+        cmp     [edx], BYTE 1
+        je      with_carry
+        inc     edx
+with_carry:
+        mov     [RES_MSD], edx
+
+        push    DWORD RES
+        push    DWORD [RES_MSD]
+        push    DWORD [RES_LSD]
+        push    intFormat
+        call    printf
+        add    esp, 16
+
         jmp     print_result
-;;;;   END OF PLUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;  START OF MINUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-minus:             ; X - Y
-        mov     ebx, [X_LSD]    ; X_LSD
-        dec     ebx             ; X_LSD points to one place AFTER the LSD
-
-        mov     edi, [Y_LSD]    ; Y_LSD
-        dec     edi
-        mov     edx, [RES_LSD]   ; RES_LSD (right edge)
-	mov     BYTE [CARRY], 0
-
-
-minus_adding_loop:	
-
-        mov     eax, 0
-        mov     al, [ebx] 	   ; digit of x -> al
-
-        sub     al, byte [edi]     ; al - = digit of y
-        sub     al, byte [CARRY]   ; al - carry
-        mov     BYTE [CARRY], 0    ; carry = 0
- 
-;	pushad
-;	push eax
-;	push resultStr
-;	call printf
-;	add esp, 8
-;	popad
-
-        cmp     al, 0 ; al < 0
-        jge      minPositive 
-        add     al, 10		     ; al+= 10 to get the real digit
-        mov     BYTE [CARRY], 1      ;set carry to 1
-minPositive:
-        mov     [edx], byte al       ; al -> (digit of res) 
-
-;	mov eax,0
-;	mov al,[edx]
-;	pushad
-;	push eax
-;	push resultStr1
-;	call printf
-;	add esp, 8
-;	popad
-
-	
-        dec     ebx              ; x digit
-        dec     edi		 ; y digit
-        dec     edx 		 ; res digit
-        cmp     ebx, X 		 ; no more digit in x
-        jb      minus_x_done
-        cmp     edi, Y 		 ; no more digit in y
-        jb      minus_y_done
-        jmp     minus_adding_loop
-minus_x_done:
-	cmp     edi, Y 		; if no more digit in y
-        jb      minus_done
-
-        mov     al, [edi]	  ; digit of y -> al
-	sub     al, byte [CARRY]  ; al-=carry      
-	mov     BYTE [CARRY], 0	  ; carry = 0
-        cmp     al, 0 		  ; al < 0
-        jge      xminPositive
-        add     al, 10			
-        mov     BYTE [CARRY], 1      ;set carry to 1
-xminPositive:	
-	mov 	[edx] , al 	; al -> digit of res
-        dec     edi		; digit of y
-        dec     edx		; digit of res
-
-        jmp     minus_x_done	
-
-minus_y_done:
-        cmp     ebx, X		; if no more digit in X
-        jb      minus_done
-
-	mov     al, byte  [ebx]		; digit of x -> al
-	sub     al, byte  [CARRY]        ; al-=carry
-	mov     BYTE [CARRY], 0		;carry = 0
-        cmp     al, 0			; al < 0
-        jge      yminPositive
-        add     al, 10
-        mov     BYTE [CARRY], 1      ;set carry to 1
-yminPositive:	
-	mov  	[edx], al		;al -> digit of res 
-        dec     ebx			;digit of x
-        dec     edx			;digit of res
-
-        jmp     minus_y_done
-
-minus_done:
-	cmp     [CARRY], BYTE 0		
-	je      minus_no_carry
-        mov     [RES_SIGN], dword 1  ;not forggeting the last carry - > the number is neg
-
-
-	mov eax,0
-	mov al,[RES_SIGN]
-	pushad
-	push eax
-	push resultStr1
-	call printf
-	add esp, 8
-	popad
-        
-minus_no_carry:
-	inc     edx
-      	mov     [RES_MSD], edx
-        jmp     print_result
-;;;;   END OF MINUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
 multiply:
         mov eax, [X]
@@ -328,13 +207,21 @@ divide:
         jmp     print
 print_result:
 
-        push   	dword [RES_MSD] 
+        push    DWORD RES
+        push    DWORD [RES_MSD]
+        push    DWORD [RES_LSD]
+        push    intFormat
+        call    printf
+        add     esp, 16
+
+
+        push    RES_MSD
         push    RES_SIGN
         push    RES_LSD
         call    printX
         add     esp, 12
 
-        Jmp     zero_and_ret
+        jmp     zero_and_ret
 
 zero_and_ret:
         mov     ecx, RES
@@ -367,68 +254,53 @@ print:
         ret
 
 printX:
-        push    ebp              	; save Base Pointer (bp) original value
-        mov     ebp, esp         	; use base pointer to access stack contents
-        pushad 
+        push    ebp
+        mov     ebp, esp
 
         mov     ecx, [ebp+12]   ; RES_SIGN
         cmp     DWORD [ecx], 1
         jne     print_init
-	pushad
         push    minusFormat
         call    printf
-	popad
         add     esp, 4
 
 print_init:
-
-;	pushad
-;	  push    DWORD RES
-;         push	    DWORD [RES_MSD]
-;         push    DWORD [RES_LSD]
-;         push         intFormat
-;         call    printf
-;         add     esp, 16
-;	popad
-
-       ;; mov     ebx, [ebp+16]   ; X[0] / RES_MSD
-         mov     ebx, [RES_MSD]
-      ;;  mov     esi, [ebp+8]    ; X_LSD
-         mov     esi, RES_LSD
+        mov     ebx, [ebp+16]   ; X[0] / RES_MSD
+        mov     ebx, [ebx]
+        ;; mov     ebx, [RES_MSD]
+        ;; mov     esi, [ebp+8]    ; X_LSD
+        mov     esi, RES_LSD
         mov     esi, [esi]
-	inc esi
+        dec     esi
+        ;; push    DWORD RES
+        ;; push    DWORD [RES_MSD]
+        ;; push    DWORD [RES_LSD]
+        ;; push         intFormat
+        ;; call    printf
+        ;; add     esp, 16
 
-       
-
-;	pushad
-;         push    DWORD RES
-;         push    DWORD ebx
-;         push    DWORD esi
-;         push    intFormat
- ;        call    printf
-;         add     esp, 16
-;	popad
+        push    DWORD RES
+        push    DWORD ebx
+        push    DWORD esi
+        push    intFormat
+        call    printf
+        add     esp, 16
 
 print_loop:
         cmp     ebx, esi
         je      end_printx
         mov     edx, 0
-        mov     dl, [ebx]
-        pushad  
+        mov     dl, byte [ebx]
+        pushad
         push    edx
         push    intCharFormat
         call    printf
         add     esp, 8
-        popad
+        popa
         inc     ebx
         jmp     print_loop
 
 end_printx:
-        push    newLineFormat ; newline
-        call    printf
-        add     esp, 4
 
-	popad                    ; restore all previously used registers
-        mov     esp, ebp
-        pop     dword ebp
+        pop ebp
         ret
