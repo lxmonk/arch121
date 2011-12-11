@@ -38,7 +38,7 @@ calc:                                   ; functions are defined as labels
         mov     ebp, esp             ; use base pointer to access stack contents
         pushad                          ; push all variables onto stack
 
-	
+
         ;;;;; convert first number to X ;;;;;;;;
         push    DWORD [ebp+8]    ;pointer to x input string
         push    X
@@ -60,7 +60,7 @@ calc:                                   ; functions are defined as labels
         mov ebx, [ebp+12]       ;ebp stores the operator's char
 
         cmp byte [ebx] ,45
-        je minus
+        je minus_case
 
         cmp byte [ebx] ,43
         je plus
@@ -176,7 +176,7 @@ plus_mod10OK:
 ;	add esp, 8
 ;	popad
 
-	
+
         dec     ebx
         dec     edi
         dec     edx
@@ -186,18 +186,18 @@ plus_mod10OK:
         jb      plus_y_done
         jmp     plus_adding_loop
 plus_x_done:
-	cmp     edi, Y
+        cmp     edi, Y
         jb      plus_done
 
         mov     al, [edi]
-	add     al, byte [CARRY]        
-	mov     BYTE [CARRY], 0
+        add     al, byte [CARRY]
+        mov     BYTE [CARRY], 0
         cmp     al, 10
         jb      plus_xmod10OK
         sub     al, 10
         mov     BYTE [CARRY], 1      ;set carry to 1
-plus_xmod10OK:	
-	mov 	[edx] , al
+plus_xmod10OK:
+        mov     [edx] , al
         dec     edi
         dec     edx
 
@@ -207,28 +207,28 @@ plus_y_done:
         cmp     ebx, X
         jb      plus_done
 
-	mov     al, byte  [ebx]
-	add     al, byte  [CARRY]        
-	mov     BYTE [CARRY], 0
+        mov     al, byte  [ebx]
+        add     al, byte  [CARRY]
+        mov     BYTE [CARRY], 0
         cmp     al, 10
         jb      plus_ymod10OK
         sub     al, 10
         mov     BYTE [CARRY], 1      ;set carry to 1
-plus_ymod10OK:	
-	mov  	[edx], al
+plus_ymod10OK:
+        mov     [edx], al
         dec     ebx
         dec     edx
 
         jmp     plus_y_done
 
 plus_done:
-	cmp     [CARRY], BYTE 0
-	je      plus_no_carry
-        mov     [edx], byte 1             ;not forggeting the last carry        
-	dec 	edx
+        cmp     [CARRY], BYTE 0
+        je      plus_no_carry
+        mov     [edx], byte 1             ;not forggeting the last carry
+        dec     edx
 plus_no_carry:
-	inc     edx
-      	mov     [RES_MSD], edx
+        inc     edx
+        mov     [RES_MSD], edx
         jmp     print_result
 ;;;;   END OF PLUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -240,35 +240,35 @@ minus_reverse: ; Y - X
         mov     ebx, [Y_LSD]    ; Y_LSD
         dec     ebx
         mov     edx, [RES_LSD]   ; RES_LSD (right edge)
-	mov     BYTE [CARRY], 0
-	jmp minus_reverse_adding_loop
+        mov     BYTE [CARRY], 0
+        jmp minus_reverse_adding_loop
 
-minus_reverse_adding_loop:	
+minus_reverse_adding_loop:
         mov     eax, 0
-        mov     al, [ebx] 	   ; digit of x -> al
+        mov     al, [ebx]          ; digit of x -> al
         sub     al, byte [edi]     ; al - = digit of y
         sub     al, byte [CARRY]   ; al - carry
         mov     BYTE [CARRY], 0    ; carry = 0
         cmp     al, 0 ; al < 0
-        jge      min_reversePositive 
-        add     al, 10		     ; al+= 10 to get the real digit
+        jge      min_reversePositive
+        add     al, 10               ; al+= 10 to get the real digit
         mov     BYTE [CARRY], 1      ;set carry to 1
 
 min_reversePositive:
-        mov     [edx], byte al       ; al -> (digit of res) 
+        mov     [edx], byte al       ; al -> (digit of res)
         dec     ebx              ; y digit
-        dec     edi		 ; x digit
-        dec     edx 		 ; res digit
-        cmp     edi, X 		 ; no more digit in x
+        dec     edi              ; x digit
+        dec     edx              ; res digit
+        cmp     edi, X                   ; no more digit in x
         jb      minus_reverse_x_done
-        cmp     ebx, Y 		 ; no more digit in y
+        cmp     ebx, Y                   ; no more digit in y
         jb      minus_reverse_y_done
         jmp     minus_reverse_adding_loop
 
 minus_reverse_y_done:
-	cmp     edi, X 		; if no more digit in x 
+        cmp     edi, X                  ; if no more digit in x
         jb      minus_reverse_done
-	; rebot RES and need to switch numbers	
+        ; rebot RES and need to switch numbers
         mov     ecx, RES
         mov     esi, RES_LSD
         mov     esi, [esi]     ; deref RES_LSD
@@ -283,25 +283,25 @@ minus_reverse_x_done:
         cmp     ebx, Y		; if no more digit in y
         jb      minus_reverse_done
 
-	mov     al, byte  [ebx]		; digit of y -> al
-	sub     al, byte  [CARRY]        ; al-=carry
-	mov     BYTE [CARRY], 0		;carry = 0
+        mov     al, byte  [ebx]		; digit of y -> al
+        sub     al, byte  [CARRY]        ; al-=carry
+        mov     BYTE [CARRY], 0		;carry = 0
         cmp     al, 0			; al < 0
         jge      xmin_reversePositive
         add     al, 10
         mov     BYTE [CARRY], 1      ;set carry to 1
 
-xmin_reversePositive:	
-	mov  	[edx], al		;al -> digit of res 
+xmin_reversePositive:
+        mov     [edx], al		;al -> digit of res
         dec     ebx			;digit of y
         dec     edx			;digit of res
         jmp     minus_reverse_x_done
 
 minus_reverse_done:
-	cmp     [CARRY], BYTE 0		
-	je      minus_reverse_no_carry
+        cmp     [CARRY], BYTE 0
+        je      minus_reverse_no_carry
         mov     [RES_SIGN], dword 1  ;not forggeting the last carry - > the number is neg
-	; rebot RES and need to switch numbers	
+        ; rebot RES and need to switch numbers
         mov     ecx, RES
         mov     esi, RES_LSD
         mov     esi, [esi]     ; deref RES_LSD
@@ -311,10 +311,10 @@ reverse_zero_res_loop2:
         mov     BYTE [ecx], 0
         inc     ecx
         jmp     reverse_zero_res_loop2
-    
+
 minus_reverse_no_carry:
-	inc     edx
-      	mov     [RES_MSD], edx
+        inc     edx
+        mov     [RES_MSD], edx
         jmp     print_result
 
 ;;;;   END OF MINUS REVERSE ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -356,18 +356,18 @@ minus:             ; X - Y
         mov     edi, [Y_LSD]    ; Y_LSD
         dec     edi
         mov     edx, [RES_LSD]   ; RES_LSD (right edge)
-	mov     BYTE [CARRY], 0
+        mov     BYTE [CARRY], 0
 
 
-minus_adding_loop:	
+minus_adding_loop:
 
         mov     eax, 0
-        mov     al, [ebx] 	   ; digit of x -> al
+        mov     al, [ebx]          ; digit of x -> al
 
         sub     al, byte [edi]     ; al - = digit of y
         sub     al, byte [CARRY]   ; al - carry
         mov     BYTE [CARRY], 0    ; carry = 0
- 
+
 ;	pushad
 ;	push eax
 ;	push resultStr
@@ -376,11 +376,11 @@ minus_adding_loop:
 ;	popad
 
         cmp     al, 0 ; al < 0
-        jge      minPositive 
-        add     al, 10		     ; al+= 10 to get the real digit
+        jge      minPositive
+        add     al, 10               ; al+= 10 to get the real digit
         mov     BYTE [CARRY], 1      ;set carry to 1
 minPositive:
-        mov     [edx], byte al       ; al -> (digit of res) 
+        mov     [edx], byte al       ; al -> (digit of res)
 
 ;	mov eax,0
 ;	mov al,[edx]
@@ -391,21 +391,21 @@ minPositive:
 ;	add esp, 8
 ;	popad
 
-	
+
         dec     ebx              ; x digit
-        dec     edi		 ; y digit
-        dec     edx 		 ; res digit
-        cmp     ebx, X 		 ; no more digit in x
+        dec     edi              ; y digit
+        dec     edx              ; res digit
+        cmp     ebx, X                   ; no more digit in x
         jb      minus_x_done
-        cmp     edi, Y 		 ; no more digit in y
+        cmp     edi, Y                   ; no more digit in y
         jb      minus_y_done
         jmp     minus_adding_loop
 
 minus_x_done:
-	cmp     edi, Y 		; if no more digit in y 
+        cmp     edi, Y                  ; if no more digit in y
         jb      minus_done
         mov     [RES_SIGN], dword 1  ;RES is neg
-	; rebot RES and need to switch numbers	
+        ; rebot RES and need to switch numbers
         mov     ecx, RES
         mov     esi, RES_LSD
         mov     esi, [esi]     ; deref RES_LSD
@@ -416,43 +416,43 @@ zero_res_loop1:
         inc     ecx
         jmp     zero_res_loop1
 
-	
-;        mov     al, [edi]	  ; digit of y -> al
-;	sub     al, byte [CARRY]  ; al-=carry      
-;	mov     BYTE [CARRY], 0	  ; carry = 0
-;        cmp     al, 0 		  ; al < 0
+
+;        mov     al, [edi]        ; digit of y -> al
+;	sub     al, byte [CARRY]  ; al-=carry
+;	mov     BYTE [CARRY], 0           ; carry = 0
+;        cmp     al, 0                    ; al < 0
 ;        jge      xminPositive
-;        add     al, 10			
+;        add     al, 10
 ;        mov     BYTE [CARRY], 1      ;set carry to 1
-;xminPositive:	
-;	mov 	[edx] , al 	; al -> digit of res
+;xminPositive:
+;	mov     [edx] , al      ; al -> digit of res
 ;        dec     edi		; digit of y
 ;        dec     edx		; digit of res
-;        jmp     minus_x_done	
+;        jmp     minus_x_done
 
 minus_y_done:
         cmp     ebx, X		; if no more digit in X
         jb      minus_done
 
-	mov     al, byte  [ebx]		; digit of x -> al
-	sub     al, byte  [CARRY]        ; al-=carry
-	mov     BYTE [CARRY], 0		;carry = 0
+        mov     al, byte  [ebx]		; digit of x -> al
+        sub     al, byte  [CARRY]        ; al-=carry
+        mov     BYTE [CARRY], 0		;carry = 0
         cmp     al, 0			; al < 0
         jge      yminPositive
         add     al, 10
         mov     BYTE [CARRY], 1      ;set carry to 1
-yminPositive:	
-	mov  	[edx], al		;al -> digit of res 
+yminPositive:
+        mov     [edx], al		;al -> digit of res
         dec     ebx			;digit of x
         dec     edx			;digit of res
 
         jmp     minus_y_done
 
 minus_done:
-	cmp     [CARRY], BYTE 0		
-	je      minus_no_carry
+        cmp     [CARRY], BYTE 0
+        je      minus_no_carry
         mov     [RES_SIGN], dword 1  ;RES is neg
-	; rebot RES and need to switch numbers	
+        ; rebot RES and need to switch numbers
         mov     ecx, RES
         mov     esi, RES_LSD
         mov     esi, [esi]     ; deref RES_LSD
@@ -473,10 +473,10 @@ zero_res_loop2:
 ;	call printf
 ;	add esp, 8
 ;	popad
-        
+
 minus_no_carry:
-	inc     edx
-      	mov     [RES_MSD], edx
+        inc     edx
+        mov     [RES_MSD], edx
         jmp     print_result
 ;;;;   END OF MINUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -496,7 +496,7 @@ divide:
         jmp     print
 print_result:
 
-        push   	dword [RES_MSD] 
+        push            dword [RES_MSD]
         push    RES_SIGN
         push    RES_LSD
         call    printX
@@ -518,6 +518,7 @@ zero_loop:
 ret:
         mov     BYTE [ecx], 0
         mov     DWORD [RES_MSD], 0 ; reset RES_MSD
+        mov     DWORD [RES_SIGN], 0
         popad                    ; restore all previously used registers
         mov     esp, ebp
         pop     ebp
@@ -536,40 +537,46 @@ print:
         ret
 
 printX:
-        push    ebp              	; save Base Pointer (bp) original value
-        mov     ebp, esp         	; use base pointer to access stack contents
-        pushad 
+        push    ebp                     ; save Base Pointer (bp) original value
+        mov     ebp, esp                ; use base pointer to access stack contents
+        pushad
 
         mov     ecx, [ebp+12]   ; RES_SIGN
         cmp     DWORD [ecx], 1
         jne     print_init
-	pushad
+        pushad
         push    minusFormat
         call    printf
-	popad
+        popad
         add     esp, 4
 
 print_init:
 
        ;; mov     ebx, [ebp+16]   ; X[0] / RES_MSD
-         mov     ebx, [RES_MSD]
+        mov     ebx, [RES_MSD]
       ;;  mov     esi, [ebp+8]    ; X_LSD
-         mov     esi, RES_LSD
+        mov     esi, RES_LSD
         mov     esi, [esi]
-	inc esi
+        mov     ecx, esi
+        inc     esi
+
 
 deleteResZeros:
-	cmp [ebx] , byte 0
-	jne print_loop	
-	inc ebx	
-	jmp deleteResZeros
+        cmp     [ebx] , byte 0
+        jne     print_loop
+        cmp     ebx, ecx
+        je      print_loop
+        inc     ebx
+        jmp     deleteResZeros
+
+
 
 print_loop:
         cmp     ebx, esi
         je      end_printx
         mov     edx, 0
         mov     dl, [ebx]
-        pushad  
+        pushad
         push    edx
         push    intCharFormat
         call    printf
