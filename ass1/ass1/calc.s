@@ -347,6 +347,7 @@ minus_no_carry:
 minus_reverse:
 
 multiply:
+
         mov eax, [X]
         mov ebx, [Y]
         imul eax, ebx
@@ -360,7 +361,7 @@ divide:
         jmp     print
 print_result:
 
-        push            dword [RES_MSD]
+        push    dword [RES_MSD]
         push    RES_SIGN
         push    RES_LSD
         call    printX
@@ -381,6 +382,7 @@ zero_loop:
 
 ret:
         mov     BYTE [ecx], 0
+        mov     DWORD [RES_MSD], 0 ; reset RES_MSD
         popad                    ; restore all previously used registers
         mov     esp, ebp
         pop     ebp
