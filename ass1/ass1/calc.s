@@ -10,7 +10,7 @@ intCharFormat:  DB "%d",0       ; print 1 digit
 newLineFormat:  DB " ",10,0       ; print 1 digit
 longFormat:     DB "%d %d %d %d",10,0 ;print 128 bit integer
 resultStr:      DB "%d",10,0                      ; this is a temporary var
-resultStr1:      DB "--%d",10,0                      ; this is a temporary var
+resultStr1:     DB "--%d",10,0                      ; this is a temporary var
 
 X:              times 39 DB 0
 X_LSD:          DD 0
@@ -18,7 +18,7 @@ Y:              times 39 DB 0
 Y_LSD:          DD 0
 RES:            times 39 DB 0
 RES_LSD:        DD (RES+38)
-RES_MSD:        DD 0
+RES_MSD:        DD (RES+38)
 X_SIGN:         DD 0
 Y_SIGN:         DD 0
 RES_SIGN:       DD 0
@@ -26,7 +26,9 @@ CARRY:          DB 0
 TMP:            times 39 DB 0
 TMP_SIGN:       DD 0
 TMP_LSD:        DD 0
-
+LRES:           times 39 DB 0
+LRES_LSD:       DD (LRES)
+Y_IS_ZERO:      DD 0
 
 
 section .text           ; our code is always in the .text section
@@ -483,20 +485,206 @@ minus_no_carry:
 
 
 multiply:
-        mov eax, [X]
-        mov ebx, [Y]
-        imul eax, ebx
-        jmp print
+        ;; mov eax, [X]
+        ;; mov ebx, [Y]
+        ;; imul eax, ebx
+        ;; jmp print
+        cmp     [X],BYTE 0
+        je      return_zero
+        cmp     [Y], BYTE 0
+        je      return_zero
+;;; determine RES_SIGN
+        mov     eax, [X_SIGN]
+        cmp     eax, [Y_SIGN]
+        je      res_pos
+        mov     DWORD [RES_SIGN], 1   ; result will be negative
+        jmp     actual_multiply
+
+return_zero:
+
+        jmp     print_result    ; RES should be zero
+
+res_pos:
+        mov     DWORD [RES_SIGN], 0
+        jmp     actual_multiply
+
+actual_multiply:
+        call    dec_y
+        cmp     [Y_IS_ZERO], DWORD 1
+        je      print_result
+        call    res_plus_x
+        jmp     actual_multiply
+
+dec_y:
+        mov     ecx, [Y_LSD]
+        dec     ecx
+
+decLoop:
+        mov     bl, BYTE [ecx] ; Y LSD
+        cmp     bl, BYTE 0
+        je      noMoreOnes
+        sub     bl, 1
+        mov     [ecx],bl
+        ret
+noMoreOnes:
+        mov     [ecx], byte 9
+        dec     ecx
+        cmp     ecx, Y
+        jnb     decLoop
+        mov     [Y_IS_ZERO], DWORD 1
+        ret
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+res_plus_x:
+        pushad
+
+        mov     ebx, [X_LSD]    ; X_LSD
+        dec     ebx             ; X_LSD points to one place AFTER the LSD
+
+        mov     edi, [LRES_LSD]    ; LRES_LSD
+        mov     edx, [RES_LSD]   ; RES_LSD (right edge)
+        mov     BYTE [CARRY], 0
+
+
+mul_plus_adding_loop:
+
+        mov     eax, 0
+        mov     al, [ebx]
+
+        add     al, byte [edi]
+        add     al, byte [CARRY]
+        mov     BYTE [CARRY], 0
+
+        cmp     al, 10
+        jb      mul_plus_mod10OK
+        sub     al, 10
+        mov     BYTE [CARRY], 1      ;set carry to 1
+mul_plus_mod10OK:
+        mov     [edx], byte al
+
+        dec     ebx
+        dec     edi
+        dec     edx
+        cmp     ebx, X
+        jb      mul_plus_x_done
+        cmp     edi, LRES
+        jb      mul_plus_lres_done
+        jmp     mul_plus_adding_loop
+mul_plus_x_done:
+        cmp     edi, LRES
+        jb      mul_plus_done
+
+        mov     al, [edi]
+        add     al, byte [CARRY]
+        mov     BYTE [CARRY], 0
+        cmp     al, 10
+        jb      mul_plus_xmod10OK
+        sub     al, 10
+        mov     BYTE [CARRY], 1      ;set carry to 1
+mul_plus_xmod10OK:
+        mov     [edx] , al
+        dec     edi
+        dec     edx
+
+        jmp     mul_plus_x_done
+
+mul_plus_lres_done:
+        cmp     ebx, X
+        jb      mul_plus_done
+
+        mov     al, byte  [ebx]
+        add     al, byte  [CARRY]
+        mov     BYTE [CARRY], 0
+        cmp     al, 10
+        jb      mul_plus_ymod10OK
+        sub     al, 10
+        mov     BYTE [CARRY], 1      ;set carry to 1
+mul_plus_ymod10OK:
+        mov     [edx], al
+        dec     ebx
+        dec     edx
+
+        jmp     mul_plus_lres_done
+
+mul_plus_done:
+        cmp     [CARRY], BYTE 0
+        je      mul_plus_no_carry
+        mov     [edx], byte 1             ;not forggeting the last carry
+        dec     edx
+mul_plus_no_carry:
+        inc     edx
+        mov     [RES_MSD], edx
+
+;;; copying from RES to LRES (left alligned)
+
+        mov     edx, [RES_MSD]
+        mov     ebx, LRES
+        xor     eax, eax
+mul_copy_loop:
+        cmp     edx, [RES_LSD]
+        je      mul_last_copy
+        mov     al, BYTE [edx]
+        mov     BYTE [ebx], al
+        inc     edx
+        inc     ebx
+        jmp     mul_copy_loop
+
+mul_last_copy:
+        mov     [LRES_LSD], ebx
+        mov     al, BYTE [edx]
+        mov     BYTE [ebx], al
+
+        popad
+        ret
+;;;;   END OF RES_PLUS_X ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 divide:
-        mov     eax, [X]
+
+        xor     eax, eax
+        mov     edi, X
+        mov     al, BYTE [X]
+        mov     esi, 10
+div_x_loop:
+        inc     edi
+        cmp     edi, [X_LSD]
+        je      get_y
+        imul    esi
+        xor     ecx, ecx
+        mov     cl, BYTE [edi]
+        add     eax, ecx
+        jmp     div_x_loop
+
+get_y:
+        mov     ebx, eax
+        xor     eax, eax
+        mov     edi, Y
+        mov     al, BYTE [Y]
+div_y_loop:
+        inc     edi
+        cmp     edi, [Y_LSD]
+        je      actual_divide
+        imul    esi
+        xor     ecx, ecx
+        mov     cl, BYTE [edi]
+        add     eax, ecx
+        jmp     div_y_loop
+
+actual_divide:
+        xchg    eax, ebx
+
+        mov     edi, [X_SIGN]
+        cmp     edi, [Y_SIGN]
+        je      do_it
+        neg     eax
+do_it:
         cdq
-        mov     ebx, [Y]
         idiv    ebx
         jmp     print
+
 print_result:
 
-        push            dword [RES_MSD]
+        push    dword [RES_MSD]
         push    RES_SIGN
         push    RES_LSD
         call    printX
@@ -516,14 +704,28 @@ zero_loop:
         jmp     zero_loop
 
 ret:
+;;; zero-out LRES
+        pushad
+
+        cld
+        mov     edi, LRES
+        mov     ecx, 39
+        xor     eax, eax
+        rep     stosb
+
+        mov     ecx, RES
+        mov     [LRES_LSD], ecx
+        mov     [Y_IS_ZERO], DWORD 0
+
+        popad
+
         mov     BYTE [ecx], 0
-        mov     DWORD [RES_MSD], 0 ; reset RES_MSD
+        mov     DWORD [RES_MSD], (RES+38) ; reset RES_MSD
         mov     DWORD [RES_SIGN], 0
         popad                    ; restore all previously used registers
         mov     esp, ebp
         pop     ebp
         ret                     ; return to C.
-
 
 print:
         push eax
@@ -533,7 +735,7 @@ print:
 
         popad                    ; restore all previously used registers
         mov     esp, ebp
-        pop     ebp
+        pop     DWORD ebp
         ret
 
 printX:
