@@ -125,12 +125,12 @@ adding_loop:
         add     al, byte [CARRY]
         mov     BYTE [CARRY], 0
 
-	pushad
-	push eax
-	push resultStr
-	call printf
-	add esp, 8
-	popad
+;	pushad
+;	push eax
+;	push resultStr
+;	call printf
+;	add esp, 8
+;	popad
 
         cmp     al, 10
         jb      mod10OK
@@ -139,14 +139,14 @@ adding_loop:
 mod10OK:
         mov     [edx], byte al
 
-	mov eax,0
-	mov al,[edx]
-	pushad
-	push eax
-	push resultStr1
-	call printf
-	add esp, 8
-	popad
+;	mov eax,0
+;	mov al,[edx]
+;	pushad
+;	push eax
+;	push resultStr1
+;	call printf
+;	add esp, 8
+;	popad
 
 	
         dec     ebx
