@@ -390,16 +390,16 @@ print_result:
         call    printX
         add     esp, 12
 
-;;         Jmp     zero_and_ret
+        Jmp     zero_and_ret
 
-;; zero_and_ret:
-;;         cld
-;;         mov     edi, RES
-;;         mov     ecx, 39
-;;         xor     eax, eax
-;;         rep     stosd
-;; ret:
-        ;; mov     BYTE [ecx], 0
+zero_and_ret:
+        cld
+        mov     edi, RES
+        mov     ecx, 39
+        xor     eax, eax
+        rep     stosd
+ret:
+        mov     BYTE [ecx], 0
         popad                    ; restore all previously used registers
         mov     esp, ebp
         pop     ebp
@@ -420,10 +420,10 @@ print:
 printX:
         push    ebp                     ; save Base Pointer (bp) original value
         mov     ebp, esp             ; use base pointer to access stack contents
-        pushad
+        ;; pushad
 
-        mov     ecx, [RES_SIGN]
-        cmp     DWORD ecx, 1
+        mov     ecx, [ebp+12]   ; RES_SIGN
+        cmp     DWORD [ecx], 1
         jne     print_init
         pushad
         push    minusFormat
