@@ -23,6 +23,11 @@ X_SIGN:         DD 0
 Y_SIGN:         DD 0
 RES_SIGN:       DD 0
 CARRY:          DB 0
+TMP:            times 39 DB 0
+TMP_SIGN:       DD 0
+TMP_LSD:        DD 0
+
+
 
 section .text           ; our code is always in the .text section
         global calc     ; makes the function appear in global scope
@@ -105,16 +110,41 @@ endConv:
 
 ;;;;  START OF PLUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 plus:             ; X + Y
+        mov     edx, [X_SIGN]
+        cmp     edx, [Y_SIGN]
+        je      same_sign
+;;; different signs
+        cmp     DWORD [X_SIGN], 0
+        jne     negative_x_pos_y
+;;; X is positive and Y is negative, so:
+        mov     DWORD [Y_SIGN], 1 ; change this to X - Y. For this
+                                ; purpose, we're changing Y to positive.
+        jmp     minus
+
+negative_x_pos_y:
+        ;; -X + Y ==> Y - X, so we're making
+        ;; X positive, and use minus_reverse
+        mov     DWORD [X_SIGN], 0
+        jmp     minus_reverse
+        jmp     minus
+
+same_sign:
+        mov     [RES_SIGN], edx   ;edx is still holding X's (and Y's)
+                                ;sign.
+        jmp     actual_plus
+
+
+actual_plus:
         mov     ebx, [X_LSD]    ; X_LSD
         dec     ebx             ; X_LSD points to one place AFTER the LSD
 
         mov     edi, [Y_LSD]    ; Y_LSD
         dec     edi
         mov     edx, [RES_LSD]   ; RES_LSD (right edge)
-	mov     BYTE [CARRY], 0
+        mov     BYTE [CARRY], 0
 
 
-plus_adding_loop:	
+plus_adding_loop:
 
         mov     eax, 0
         mov     al, [ebx]
@@ -458,6 +488,7 @@ zero_loop:
 
 ret:
         mov     BYTE [ecx], 0
+        mov     DWORD [RES_MSD], 0 ; reset RES_MSD
         popad                    ; restore all previously used registers
         mov     esp, ebp
         pop     ebp
@@ -537,7 +568,62 @@ end_printx:
         call    printf
         add     esp, 4
 
-	popad                    ; restore all previously used registers
+        popad                    ; restore all previously used registers
         mov     esp, ebp
         pop     dword ebp
+        ret
+
+exchange_x_y:
+        pushad
+
+        cld                     ;starting from X[0], Y[0] and
+                                ;incrementing
+;;;  TMP <- X
+        mov     esi, X
+        mov     edi, TMP
+        mov     ecx, 39
+lp:
+        lodsb
+        stosb
+        loop    lp
+
+        mov     ecx, DWORD [X_SIGN]
+        mov     DWORD [TMP_SIGN], ecx
+        ;; mov     ecx, DWORD [X_LSD]
+        ;; mov     DWORD [TMP_LSD], ecx
+
+;;; X <- Y
+        mov     esi, Y
+        mov     edi, X
+        mov     ecx, 39
+lp2:
+        lodsb
+        stosb
+        loop    lp2
+
+        mov     ecx, DWORD [Y_SIGN]
+        mov     DWORD [X_SIGN], ecx
+        ;; mov     ecx, DWORD [Y_LSD]
+        ;; mov     DWORD [X_LSD], ecx
+
+;;; Y <- TMP
+        mov     esi, TMP
+        mov     edi, Y
+        mov     ecx, 39
+lp3:
+        lodsb
+        stosb
+        loop    lp3
+
+        mov     ecx, DWORD [TMP_SIGN]
+        mov     DWORD [Y_SIGN], ecx
+        ;; mov     ecx, DWORD [TMP_LSD]
+        ;; mov     DWORD [Y_LSD], ecx
+
+;;; exchange LSDs:
+debugLabel:
+        mov     ecx, [X_LSD]
+        sub     ecx, X
+;;; return
+        popad
         ret
