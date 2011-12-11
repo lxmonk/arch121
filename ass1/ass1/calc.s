@@ -376,6 +376,7 @@ minPositive:
 minus_x_done:
 	cmp     edi, Y 		; if no more digit in y 
         jb      minus_done
+        mov     [RES_SIGN], dword 1  ;RES is neg
 	; rebot RES and need to switch numbers	
         mov     ecx, RES
         mov     esi, RES_LSD
@@ -422,7 +423,7 @@ yminPositive:
 minus_done:
 	cmp     [CARRY], BYTE 0		
 	je      minus_no_carry
-        mov     [RES_SIGN], dword 1  ;not forggeting the last carry - > the number is neg
+        mov     [RES_SIGN], dword 1  ;RES is neg
 	; rebot RES and need to switch numbers	
         mov     ecx, RES
         mov     esi, RES_LSD
@@ -522,15 +523,6 @@ printX:
 
 print_init:
 
-;	pushad
-;	  push    DWORD RES
-;         push	    DWORD [RES_MSD]
-;         push    DWORD [RES_LSD]
-;         push         intFormat
-;         call    printf
-;         add     esp, 16
-;	popad
-
        ;; mov     ebx, [ebp+16]   ; X[0] / RES_MSD
          mov     ebx, [RES_MSD]
       ;;  mov     esi, [ebp+8]    ; X_LSD
@@ -538,16 +530,11 @@ print_init:
         mov     esi, [esi]
 	inc esi
 
-       
-
-;	pushad
-;         push    DWORD RES
-;         push    DWORD ebx
-;         push    DWORD esi
-;         push    intFormat
- ;        call    printf
-;         add     esp, 16
-;	popad
+deleteResZeros:
+	cmp [ebx] , byte 0
+	jne print_loop	
+	inc ebx	
+	jmp deleteResZeros
 
 print_loop:
         cmp     ebx, esi
