@@ -223,28 +223,28 @@ minus_adding_loop:
         sub     al, byte [CARRY]   ; al - carry
         mov     BYTE [CARRY], 0    ; carry = 0
  
-	pushad
-	push eax
-	push resultStr
-	call printf
-	add esp, 8
-	popad
+;	pushad
+;	push eax
+;	push resultStr
+;	call printf
+;	add esp, 8
+;	popad
 
         cmp     al, 0 ; al < 0
         jge      minPositive 
         add     al, 10		     ; al+= 10 to get the real digit
         mov     BYTE [CARRY], 1      ;set carry to 1
 minPositive:
-        mov     [edx], byte al       ; (digit of res) = al
+        mov     [edx], byte al       ; al -> (digit of res) 
 
-	mov eax,0
-	mov al,[edx]
-	pushad
-	push eax
-	push resultStr1
-	call printf
-	add esp, 8
-	popad
+;	mov eax,0
+;	mov al,[edx]
+;	pushad
+;	push eax
+;	push resultStr1
+;	call printf
+;	add esp, 8
+;	popad
 
 	
         dec     ebx              ; x digit
@@ -294,7 +294,18 @@ yminPositive:
 minus_done:
 	cmp     [CARRY], BYTE 0		
 	je      minus_no_carry
-        mov     [RES_SIGN], byte 1  ;not forggeting the last carry - > the number is neg        
+        mov     [RES_SIGN], dword 1  ;not forggeting the last carry - > the number is neg
+
+
+	mov eax,0
+	mov al,[RES_SIGN]
+	pushad
+	push eax
+	push resultStr1
+	call printf
+	add esp, 8
+	popad
+        
 minus_no_carry:
 	inc     edx
       	mov     [RES_MSD], edx
@@ -371,31 +382,32 @@ printX:
 
 print_init:
 
-	;pushad
-	;  push    DWORD RES
-        ; push	    DWORD [RES_MSD]
-        ; push    DWORD [RES_LSD]
-        ; push         intFormat
-        ; call    printf
-        ; add     esp, 16
-	;popad
+;	pushad
+;	  push    DWORD RES
+;         push	    DWORD [RES_MSD]
+;         push    DWORD [RES_LSD]
+;         push         intFormat
+;         call    printf
+;         add     esp, 16
+;	popad
 
-        mov     ebx, [ebp+16]   ; X[0] / RES_MSD
-        ;; mov     ebx, [RES_MSD]
-        mov     esi, [ebp+8]    ; X_LSD
-        ;; mov     esi, RES_LS
+       ;; mov     ebx, [ebp+16]   ; X[0] / RES_MSD
+         mov     ebx, [RES_MSD]
+      ;;  mov     esi, [ebp+8]    ; X_LSD
+         mov     esi, RES_LSD
         mov     esi, [esi]
 	inc esi
 
        
 
-
- ;        push    DWORD RES
- ;        push    DWORD ebx
- ;        push    DWORD esi
- ;        push    intFormat
+;	pushad
+;         push    DWORD RES
+;         push    DWORD ebx
+;         push    DWORD esi
+;         push    intFormat
  ;        call    printf
- ;        add     esp, 16
+;         add     esp, 16
+;	popad
 
 print_loop:
         cmp     ebx, esi
