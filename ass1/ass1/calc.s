@@ -319,6 +319,34 @@ minus_reverse_no_carry:
 
 ;;;;   END OF MINUS REVERSE ;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+minus_case:                     ;decide what minus case to use (or
+                                ;plus, sometimes)
+        mov     edx, [X_SIGN]
+        cmp     edx, 1
+        je      x_negative      ; X is negative
+;;; X is positive
+        mov     edx, [Y_SIGN]
+        cmp     edx, 1          ; Y is negative
+        jne     minus           ; both are positive, go to minus!
+;;; X is positive and Y is negative -> X - (-Y) ==> X + Y
+        mov     DWORD [Y_SIGN], 0
+        jmp     actual_plus
+
+x_negative:
+        mov     edx, [Y_SIGN]
+        cmp     edx, 1          ; both are is negative
+        je      minus_both_negative
+;;; -X - Y -> -X + -Y
+        mov     DWORD [Y_SIGN], 1
+        jmp     plus            ;we need plus, so the result will be
+                                ;negative
+
+minus_both_negative:            ; -X - -Y => -X + Y => Y - X
+        mov     DWORD [X_SIGN], 0
+        mov     DWORD [Y_SIGN], 0
+        jmp     minus_reverse
+
+
 
 ;;;;  START OF MINUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 minus:             ; X - Y
