@@ -203,7 +203,94 @@ plus_no_carry:
 ;;;;   END OF PLUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;;;;  START OF MINUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; START OF MINUS REVERS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+minus_reverse: ; Y - X
+        mov     edi, [X_LSD]    ; X_LSD
+        dec     edi             ; X_LSD points to one place AFTER the LSD
+        mov     ebx, [Y_LSD]    ; Y_LSD
+        dec     ebx
+        mov     edx, [RES_LSD]   ; RES_LSD (right edge)
+	mov     BYTE [CARRY], 0
+	jmp minus_reverse_adding_loop
+
+minus_reverse_adding_loop:	
+        mov     eax, 0
+        mov     al, [ebx] 	   ; digit of x -> al
+        sub     al, byte [edi]     ; al - = digit of y
+        sub     al, byte [CARRY]   ; al - carry
+        mov     BYTE [CARRY], 0    ; carry = 0
+        cmp     al, 0 ; al < 0
+        jge      min_reversePositive 
+        add     al, 10		     ; al+= 10 to get the real digit
+        mov     BYTE [CARRY], 1      ;set carry to 1
+
+min_reversePositive:
+        mov     [edx], byte al       ; al -> (digit of res) 
+        dec     ebx              ; y digit
+        dec     edi		 ; x digit
+        dec     edx 		 ; res digit
+        cmp     edi, X 		 ; no more digit in x
+        jb      minus_reverse_x_done
+        cmp     ebx, Y 		 ; no more digit in y
+        jb      minus_reverse_y_done
+        jmp     minus_reverse_adding_loop
+
+minus_reverse_y_done:
+	cmp     edi, X 		; if no more digit in x 
+        jb      minus_reverse_done
+	; rebot RES and need to switch numbers	
+        mov     ecx, RES
+        mov     esi, RES_LSD
+        mov     esi, [esi]     ; deref RES_LSD
+reverse_zero_res_loop1:
+        cmp     ecx, esi
+        je      minus ; minus
+        mov     BYTE [ecx], 0
+        inc     ecx
+        jmp     reverse_zero_res_loop1
+
+minus_reverse_x_done:
+        cmp     ebx, Y		; if no more digit in y
+        jb      minus_reverse_done
+
+	mov     al, byte  [ebx]		; digit of y -> al
+	sub     al, byte  [CARRY]        ; al-=carry
+	mov     BYTE [CARRY], 0		;carry = 0
+        cmp     al, 0			; al < 0
+        jge      xmin_reversePositive
+        add     al, 10
+        mov     BYTE [CARRY], 1      ;set carry to 1
+
+xmin_reversePositive:	
+	mov  	[edx], al		;al -> digit of res 
+        dec     ebx			;digit of y
+        dec     edx			;digit of res
+        jmp     minus_reverse_x_done
+
+minus_reverse_done:
+	cmp     [CARRY], BYTE 0		
+	je      minus_reverse_no_carry
+        mov     [RES_SIGN], dword 1  ;not forggeting the last carry - > the number is neg
+	; rebot RES and need to switch numbers	
+        mov     ecx, RES
+        mov     esi, RES_LSD
+        mov     esi, [esi]     ; deref RES_LSD
+reverse_zero_res_loop2:
+        cmp     ecx, esi
+        je      minus ; minus_reverse
+        mov     BYTE [ecx], 0
+        inc     ecx
+        jmp     reverse_zero_res_loop2
+    
+minus_reverse_no_carry:
+	inc     edx
+      	mov     [RES_MSD], edx
+        jmp     print_result
+
+;;;;   END OF MINUS REVERSE ;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;  START OF MINUS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 minus:             ; X - Y
         mov     ebx, [X_LSD]    ; X_LSD
         dec     ebx             ; X_LSD points to one place AFTER the LSD
@@ -255,23 +342,34 @@ minPositive:
         cmp     edi, Y 		 ; no more digit in y
         jb      minus_y_done
         jmp     minus_adding_loop
+
 minus_x_done:
-	cmp     edi, Y 		; if no more digit in y
+	cmp     edi, Y 		; if no more digit in y 
         jb      minus_done
+	; rebot RES and need to switch numbers	
+        mov     ecx, RES
+        mov     esi, RES_LSD
+        mov     esi, [esi]     ; deref RES_LSD
+zero_res_loop1:
+        cmp     ecx, esi
+        je      minus_reverse ; minus_reverse
+        mov     BYTE [ecx], 0
+        inc     ecx
+        jmp     zero_res_loop1
 
-        mov     al, [edi]	  ; digit of y -> al
-	sub     al, byte [CARRY]  ; al-=carry      
-	mov     BYTE [CARRY], 0	  ; carry = 0
-        cmp     al, 0 		  ; al < 0
-        jge      xminPositive
-        add     al, 10			
-        mov     BYTE [CARRY], 1      ;set carry to 1
-xminPositive:	
-	mov 	[edx] , al 	; al -> digit of res
-        dec     edi		; digit of y
-        dec     edx		; digit of res
-
-        jmp     minus_x_done	
+	
+;        mov     al, [edi]	  ; digit of y -> al
+;	sub     al, byte [CARRY]  ; al-=carry      
+;	mov     BYTE [CARRY], 0	  ; carry = 0
+;        cmp     al, 0 		  ; al < 0
+;        jge      xminPositive
+;        add     al, 10			
+;        mov     BYTE [CARRY], 1      ;set carry to 1
+;xminPositive:	
+;	mov 	[edx] , al 	; al -> digit of res
+;        dec     edi		; digit of y
+;        dec     edx		; digit of res
+;        jmp     minus_x_done	
 
 minus_y_done:
         cmp     ebx, X		; if no more digit in X
@@ -295,16 +393,27 @@ minus_done:
 	cmp     [CARRY], BYTE 0		
 	je      minus_no_carry
         mov     [RES_SIGN], dword 1  ;not forggeting the last carry - > the number is neg
+	; rebot RES and need to switch numbers	
+        mov     ecx, RES
+        mov     esi, RES_LSD
+        mov     esi, [esi]     ; deref RES_LSD
+zero_res_loop2:
+        cmp     ecx, esi
+        je      minus_reverse ; minus_reverse
+        mov     BYTE [ecx], 0
+        inc     ecx
+        jmp     zero_res_loop2
 
 
-	mov eax,0
-	mov al,[RES_SIGN]
-	pushad
-	push eax
-	push resultStr1
-	call printf
-	add esp, 8
-	popad
+
+;	mov eax,0
+;	mov al,[RES_SIGN]
+;	pushad
+;	push eax
+;	push resultStr1
+;	call printf
+;	add esp, 8
+;	popad
         
 minus_no_carry:
 	inc     edx
