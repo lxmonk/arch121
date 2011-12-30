@@ -85,6 +85,7 @@ call_for_up:
         je      call_for_right
 
         cmp     cl, [DIST]     ; no improvement from this path
+        ;;  we should pay attention to 0.
         jbe     call_for_right
 
         ;; do the actual job
