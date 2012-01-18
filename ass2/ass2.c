@@ -58,9 +58,9 @@ int main(int argc, char *argv[]){
      printf("\n%s", str);
    }*/
    char *maze= readMaze(filePtr,&h,&w);
-   printf("w:%d; h:%d; maze:%s\n",w,h,maze);
+   /* printf("w:%d; h:%d; maze:%s\n",w,h,maze); */
    fclose(filePtr);
    printf("%d\n", mazeSolver(maze, h, w));
-   printf("w:%d; h:%d; maze:%s\n",w,h,maze);
+   /* printf("w:%d; h:%d; maze:%s\n",w,h,maze); */
    return 0;
 }

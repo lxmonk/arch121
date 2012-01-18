@@ -11,6 +11,9 @@ newLineFormat:  DB " ",10,0       ; print 1 digit
 longFormat:     DB "%d %d %d %d",10,0 ;print 128 bit integer
 resultStr:      DB "%d",10,0                      ; this is a temporary var
 resultStr1:     DB "--%d",10,0                      ; this is a temporary var
+numdb:          DB 12,34,56,78
+numdw:          DW 12,34,56,78
+numdd:          DD 12,34,56,78
 
 X:              times 39 DB 0
 X_LSD:          DD 0
@@ -29,7 +32,10 @@ TMP_LSD:        DD 0
 LRES:           times 39 DB 0
 LRES_LSD:       DD (LRES)
 Y_IS_ZERO:      DD 0
-
+    resb 4
+X1:     dw 0x11
+X2:     dw 0x2a
+    resb 4
 
 section .text           ; our code is always in the .text section
         global calc     ; makes the function appear in global scope
@@ -39,6 +45,13 @@ calc:                                   ; functions are defined as labels
         push    ebp                     ; save Base Pointer (bp) original value
         mov     ebp, esp             ; use base pointer to access stack contents
         pushad                          ; push all variables onto stack
+
+        ror dword [X1], 16
+
+        mov eax, 1
+        mov ebx, 2
+        sub eax, ebx
+        mov [X], DWORD 0
 
 
         ;;;;; convert first number to X ;;;;;;;;
