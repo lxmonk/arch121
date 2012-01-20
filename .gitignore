@@ -60,7 +60,6 @@
 /dump.s
 /night_before_midterm.png
 /night_before_midterm2.png
-/ass3/ass3.S
 /ass2/wall2.txt
 /ass2/128x128.txt
 /ass2/200x200.txt
@@ -95,3 +94,7 @@
 /ass3/huff.o
 /ass3/inFile
 /ass3/outFile
+/ass3/.ropeproject/config.py
+/ass3/huff_code.c
+/ass3/huff_tab
+/ass3/tab.py
